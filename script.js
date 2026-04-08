@@ -2,28 +2,53 @@ const tg = window.Telegram.WebApp;
 tg.expand();
 
 const emojis = ['🍎', '🍔', '🍕', '🍣', '🍦', '🍩', '🥑', '🌮'];
-let cards = [...emojis, ...emojis]; // Duplicamos para tener parejas
+let cards = [...emojis, ...emojis]; 
 let flippedCards = [];
 let matchedCount = 0;
 
-// Mezclar cartas
-cards.sort(() => 0.5 - Math.random());
+// --- NUEVAS VARIABLES ---
+let seconds = 0;
+let timerInterval = null;
+let gameStarted = false;
 
 const board = document.getElementById('game-board');
+const timerDisplay = document.getElementById('timer');
+const scoreDisplay = document.getElementById('score');
+
+// Función para barajar
+function shuffle() {
+    cards.sort(() => 0.5 - Math.random());
+}
 
 function createBoard() {
+    board.innerHTML = ""; // Limpiamos el tablero (útil al reiniciar)
+    shuffle();
     cards.forEach((emoji, index) => {
         const card = document.createElement('div');
         card.classList.add('card');
         card.dataset.value = emoji;
         card.dataset.index = index;
-        card.innerText = "?"; // Oculto al inicio
+        card.innerText = "?";
         card.onclick = () => flipCard(card);
         board.appendChild(card);
     });
 }
 
+// --- FUNCIÓN DEL RELOJ ---
+function startTimer() {
+    if (!gameStarted) {
+        gameStarted = true;
+        timerInterval = setInterval(() => {
+            seconds++;
+            if(timerDisplay) timerDisplay.innerText = seconds;
+        }, 1000);
+    }
+}
+
 function flipCard(card) {
+    // El reloj arranca con el primer toque
+    startTimer();
+
     if (flippedCards.length < 2 && !card.classList.contains('flipped') && !card.classList.contains('matched')) {
         card.innerText = card.dataset.value;
         card.classList.add('flipped');
@@ -41,11 +66,17 @@ function checkMatch() {
         c1.classList.add('matched');
         c2.classList.add('matched');
         matchedCount++;
-        document.getElementById('score').innerText = matchedCount;
+        scoreDisplay.innerText = matchedCount;
         
         if (matchedCount === 8) {
-            alert("¡Ganaste!");
-            tg.sendData("Juego completado"); 
+            // --- DETENER JUEGO ---
+            clearInterval(timerInterval); 
+            
+            setTimeout(() => {
+                alert(`¡Victoria! Tiempo: ${seconds} segundos.`);
+                // Enviamos el dato al bot para que Alejandro pueda guardarlo
+                tg.sendData(`Completado en ${seconds}s`);
+            }, 200);
         }
     } else {
         c1.innerText = "?";
@@ -56,5 +87,16 @@ function checkMatch() {
     flippedCards = [];
 }
 
-// Iniciar el juego
+// Función extra por si quieres poner un botón de "Reiniciar"
+function resetGame() {
+    clearInterval(timerInterval);
+    seconds = 0;
+    matchedCount = 0;
+    gameStarted = false;
+    if(timerDisplay) timerDisplay.innerText = "0";
+    if(scoreDisplay) scoreDisplay.innerText = "0";
+    createBoard();
+}
+
+// Iniciar
 createBoard();
